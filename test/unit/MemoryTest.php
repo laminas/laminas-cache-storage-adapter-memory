@@ -12,6 +12,8 @@ use Laminas\Cache;
 use Laminas\Cache\Exception\OutOfSpaceException;
 
 use function memory_get_usage;
+use function mt_rand;
+use function sha1;
 
 /**
  * @group      Laminas_Cache
@@ -43,5 +45,22 @@ class MemoryTest extends AbstractCommonAdapterTest
 
         $this->expectException(OutOfSpaceException::class);
         $this->storage->addItem('test', 'test');
+    }
+
+    public function testReclaimMemory()
+    {
+        $this->options->setMemoryLimit(memory_get_usage(true) + 200);
+
+        try {
+            for ($i = 0; $i <= 100000; $i++) {
+                $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
+            }
+
+            self::fail('filling the cache with test data to reach the memory limit failed');
+        } catch (OutOfSpaceException $ignore) {
+        }
+
+        $this->storage->flush();
+        $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
     }
 }
