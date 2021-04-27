@@ -10,6 +10,11 @@ namespace Laminas\Cache\Storage\Adapter;
 
 use Laminas\Cache\Exception;
 
+use function ini_get;
+use function is_numeric;
+use function preg_match;
+use function strtoupper;
+
 /**
  * These are options specific to the APC adapter
  */
@@ -20,7 +25,7 @@ class MemoryOptions extends AdapterOptions
      *
      * @var null|int
      */
-    protected $memoryLimit = null;
+    protected $memoryLimit;
 
     /**
      * Set memory limit
@@ -31,6 +36,7 @@ class MemoryOptions extends AdapterOptions
      *   will be thrown.
      *
      * @link http://php.net/manual/faq.using.php#faq.using.shorthandbytes
+     *
      * @param  string|int $memoryLimit
      * @return MemoryOptions Provides a fluent interface
      */
@@ -38,7 +44,7 @@ class MemoryOptions extends AdapterOptions
     {
         $memoryLimit = $this->normalizeMemoryLimit($memoryLimit);
 
-        if ($this->memoryLimit != $memoryLimit) {
+        if ($this->memoryLimit !== $memoryLimit) {
             $this->triggerOptionEvent('memory_limit', $memoryLimit);
             $this->memoryLimit = $memoryLimit;
         }
