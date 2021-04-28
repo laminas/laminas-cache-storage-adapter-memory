@@ -9,24 +9,27 @@
 namespace LaminasTest\Cache\Storage\Adapter;
 
 use Laminas\Cache;
+use Laminas\Cache\Exception\OutOfSpaceException;
+
+use function memory_get_usage;
 
 /**
  * @group      Laminas_Cache
  * @covers Laminas\Cache\Storage\Adapter\Memory<extended>
  */
-class MemoryTest extends CommonAdapterTest
+class MemoryTest extends AbstractCommonAdapterTest
 {
-    public function setUp()
+    public function setUp(): void
     {
         // instantiate memory adapter
-        $this->_options = new Cache\Storage\Adapter\MemoryOptions();
-        $this->_storage = new Cache\Storage\Adapter\Memory();
-        $this->_storage->setOptions($this->_options);
+        $this->options = new Cache\Storage\Adapter\MemoryOptions();
+        $this->storage = new Cache\Storage\Adapter\Memory();
+        $this->storage->setOptions($this->options);
 
         parent::setUp();
     }
 
-    public function getCommonAdapterNamesProvider()
+    public function getCommonAdapterNamesProvider(): array
     {
         return [
             ['memory'],
@@ -36,9 +39,9 @@ class MemoryTest extends CommonAdapterTest
 
     public function testThrowOutOfSpaceException()
     {
-        $this->_options->setMemoryLimit(memory_get_usage(true) - 8);
+        $this->options->setMemoryLimit(memory_get_usage(true) - 8);
 
-        $this->expectException('Laminas\Cache\Exception\OutOfSpaceException');
-        $this->_storage->addItem('test', 'test');
+        $this->expectException(OutOfSpaceException::class);
+        $this->storage->addItem('test', 'test');
     }
 }
