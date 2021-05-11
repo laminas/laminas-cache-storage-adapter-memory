@@ -115,6 +115,13 @@ class MemoryTest extends AbstractCommonAdapterTest
 
         self::assertLessThan($finishMemoryAllocatedToPhp, $flushedMemoryAllocatedToPhp);
 
-        $this->storage->addItem('item', sha1((string) mt_rand()));
+        $this->storage->addItem('item1', sha1((string) mt_rand()));
+
+        $this->storage->addItem('item2', $this->storage->getItem('item1'));
+
+        self::assertSame(
+            $this->storage->getItem('item1'),
+            $this->storage->getItem('item2')
+        );
     }
 }
