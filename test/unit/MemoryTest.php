@@ -41,7 +41,7 @@ class MemoryTest extends AbstractCommonAdapterTest
 
     public function testThrowOutOfSpaceException()
     {
-        $this->options->setMemoryLimit(memory_get_usage(true) - 8);
+        $this->options->setMemoryLimit($this->getUsedMemory() - 1);
 
         $this->expectException(OutOfSpaceException::class);
         $this->storage->addItem('test', 'test');
@@ -51,19 +51,19 @@ class MemoryTest extends AbstractCommonAdapterTest
     {
         $outOfSpaceExceptionThrown = false;
         try {
-            $startMemoryAllocatedToPhp = memory_get_usage(true);
+            $startMemoryAllocatedToPhp = $this->getAllocatedMemory();
 
             for ($i = 0; $i < 100000; ++$i) {
                 $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
             }
 
-            $finishMemoryAllocatedToPhp = memory_get_usage(true);
+            $finishMemoryAllocatedToPhp = $this->getUsedMemory();
 
             $this->assertGreaterThan($startMemoryAllocatedToPhp, $finishMemoryAllocatedToPhp);
 
             $this->storage->flush();
 
-            $flushedMemoryAllocatedToPhp = memory_get_usage(true);
+            $flushedMemoryAllocatedToPhp = $this->getUsedMemory();
 
             self::assertLessThan($finishMemoryAllocatedToPhp, $flushedMemoryAllocatedToPhp);
         } catch (OutOfSpaceException $ignore) {
@@ -75,7 +75,7 @@ class MemoryTest extends AbstractCommonAdapterTest
 
     public function testReclaimMemoryPr7()
     {
-        $this->options->setMemoryLimit(memory_get_usage(true) + 200);
+        $this->options->setMemoryLimit($this->getAllocatedMemory() + 200);
 
         try {
             for ($i = 0; $i <= 100000; $i++) {
@@ -92,8 +92,8 @@ class MemoryTest extends AbstractCommonAdapterTest
 
     public function testReclaimMemoryAfterOutOfSpaceExceptionThrown()
     {
-        $startMemoryAllocatedToPhp = memory_get_usage(true);
-        $this->options->setMemoryLimit($startMemoryAllocatedToPhp * 2);
+        $startMemoryAllocatedToPhp = $this->getAllocatedMemory();
+        $this->options->setMemoryLimit($startMemoryAllocatedToPhp);
         $outOfSpaceExceptionThrown = false;
         try {
             for ($i = 0; $i < 100000; ++$i) {
@@ -105,13 +105,13 @@ class MemoryTest extends AbstractCommonAdapterTest
 
         self::assertTrue($outOfSpaceExceptionThrown, 'OutOfSpaceException was not thrown');
 
-        $finishMemoryAllocatedToPhp = memory_get_usage(true);
+        $finishMemoryAllocatedToPhp = $this->getUsedMemory();
 
         $this->assertGreaterThan($startMemoryAllocatedToPhp, $finishMemoryAllocatedToPhp);
 
         $this->storage->flush();
 
-        $flushedMemoryAllocatedToPhp = memory_get_usage(true);
+        $flushedMemoryAllocatedToPhp = $this->getUsedMemory();
 
         self::assertLessThan($finishMemoryAllocatedToPhp, $flushedMemoryAllocatedToPhp);
 
@@ -123,5 +123,15 @@ class MemoryTest extends AbstractCommonAdapterTest
             $this->storage->getItem('item1'),
             $this->storage->getItem('item2')
         );
+    }
+
+    private function getUsedMemory()
+    {
+        return memory_get_usage(false);
+    }
+
+    private function getAllocatedMemory()
+    {
+        return memory_get_usage(true);
     }
 }
