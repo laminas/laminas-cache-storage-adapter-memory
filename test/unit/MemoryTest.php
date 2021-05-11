@@ -73,6 +73,23 @@ class MemoryTest extends AbstractCommonAdapterTest
         self::assertFalse($outOfSpaceExceptionThrown, 'OutOfSpaceException was thrown');
     }
 
+    public function testReclaimMemoryPr7()
+    {
+        $this->options->setMemoryLimit(memory_get_usage(true) + 200);
+
+        try {
+            for ($i = 0; $i <= 100000; $i++) {
+                $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
+            }
+
+            self::fail('filling the cache with test data to reach the memory limit failed');
+        } catch (OutOfSpaceException $ignore) {
+        }
+
+        $this->storage->flush();
+        $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
+    }
+
     public function testReclaimMemoryAfterOutOfSpaceExceptionThrown()
     {
         $startMemoryAllocatedToPhp = memory_get_usage(true);
