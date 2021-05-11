@@ -73,7 +73,10 @@ class MemoryTest extends AbstractCommonAdapterTest
         self::assertFalse($outOfSpaceExceptionThrown, 'OutOfSpaceException was thrown');
     }
 
-    public function testReclaimMemoryPr7()
+    /**
+     * See: https://github.com/laminas/laminas-cache-storage-adapter-memory/issues/5
+     */
+    public function testReclaimMemoryAfterOutOfSpaceExceptionThrownAndMemoryGetsFlushed()
     {
         $this->options->setMemoryLimit($this->getAllocatedMemory() + 200);
 
@@ -125,14 +128,12 @@ class MemoryTest extends AbstractCommonAdapterTest
         );
     }
 
-    /** @return int */
-    private function getUsedMemory()
+    private function getUsedMemory(): int
     {
         return memory_get_usage(false);
     }
 
-    /** @return int */
-    private function getAllocatedMemory()
+    private function getAllocatedMemory(): int
     {
         return memory_get_usage(true);
     }

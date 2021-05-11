@@ -24,6 +24,8 @@ use Traversable;
 use function array_diff;
 use function array_keys;
 use function count;
+use function gc_collect_cycles;
+use function gc_enabled;
 use function gc_mem_caches;
 use function memory_get_usage;
 use function microtime;
@@ -153,6 +155,12 @@ class Memory extends AbstractAdapter implements
     {
         if ($this->data === []) {
             return true;
+        }
+
+        unset($this->data);
+
+        if (gc_enabled()) {
+            gc_collect_cycles();
         }
 
         $this->data = [];
