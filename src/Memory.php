@@ -24,6 +24,7 @@ use Traversable;
 use function array_diff;
 use function array_keys;
 use function count;
+use function gc_mem_caches;
 use function memory_get_usage;
 use function microtime;
 use function strpos;
@@ -149,7 +150,8 @@ class Memory extends AbstractAdapter implements
     public function flush()
     {
         $this->data = [];
-        return true;
+
+        return gc_mem_caches() > 0;
     }
 
     /* ClearExpiredInterface */

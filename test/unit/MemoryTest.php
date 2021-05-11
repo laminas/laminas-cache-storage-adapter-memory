@@ -12,6 +12,8 @@ use Laminas\Cache;
 use Laminas\Cache\Exception\OutOfSpaceException;
 
 use function memory_get_usage;
+use function mt_rand;
+use function sha1;
 
 /**
  * @group      Laminas_Cache
@@ -43,5 +45,57 @@ class MemoryTest extends AbstractCommonAdapterTest
 
         $this->expectException(OutOfSpaceException::class);
         $this->storage->addItem('test', 'test');
+    }
+
+    public function testReclaimMemory()
+    {
+        $outOfSpaceExceptionThrown = false;
+        try {
+            $startMemoryAllocatedToPhp = memory_get_usage(true);
+
+            for ($i = 0; $i < 100000; ++$i) {
+                $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
+            }
+
+            $finishMemoryAllocatedToPhp = memory_get_usage(true);
+
+            $this->assertGreaterThan($startMemoryAllocatedToPhp, $finishMemoryAllocatedToPhp);
+
+            $this->storage->flush();
+
+            $flushedMemoryAllocatedToPhp = memory_get_usage(true);
+
+            self::assertLessThan($finishMemoryAllocatedToPhp, $flushedMemoryAllocatedToPhp);
+        } catch (OutOfSpaceException $ignore) {
+            $outOfSpaceExceptionThrown = true;
+        }
+
+        self::assertFalse($outOfSpaceExceptionThrown, 'OutOfSpaceException was thrown');
+    }
+
+    public function testReclaimMemoryAfterOutOfSpaceExceptionThrown()
+    {
+        $startMemoryAllocatedToPhp = memory_get_usage(true);
+        $this->options->setMemoryLimit($startMemoryAllocatedToPhp * 2);
+        $outOfSpaceExceptionThrown = false;
+        try {
+            for ($i = 0; $i < 100000; ++$i) {
+                $this->storage->addItem('item' . $i, sha1((string) mt_rand()));
+            }
+        } catch (OutOfSpaceException $ignore) {
+            $outOfSpaceExceptionThrown = true;
+        }
+
+        self::assertTrue($outOfSpaceExceptionThrown, 'OutOfSpaceException was not thrown');
+
+        $finishMemoryAllocatedToPhp = memory_get_usage(true);
+
+        $this->assertGreaterThan($startMemoryAllocatedToPhp, $finishMemoryAllocatedToPhp);
+
+        $this->storage->flush();
+
+        $flushedMemoryAllocatedToPhp = memory_get_usage(true);
+
+        self::assertLessThan($finishMemoryAllocatedToPhp, $flushedMemoryAllocatedToPhp);
     }
 }
