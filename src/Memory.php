@@ -24,6 +24,9 @@ use Traversable;
 use function array_diff;
 use function array_keys;
 use function count;
+use function gc_collect_cycles;
+use function gc_enabled;
+use function gc_mem_caches;
 use function memory_get_usage;
 use function microtime;
 use function strpos;
@@ -111,9 +114,11 @@ class Memory extends AbstractAdapter implements
      */
     public function getAvailableSpace()
     {
-        $total = $this->getOptions()->getMemoryLimit();
-        $avail = $total - (float) memory_get_usage(true);
-        return $avail > 0 ? $avail : 0;
+        $memoryLimit = $this->getOptions()->getMemoryLimit();
+        $usedMemory  = memory_get_usage(false);
+        $freeMemory  = $memoryLimit - $usedMemory;
+
+        return $freeMemory > 0 ? $freeMemory : 0;
     }
 
     /* IterableInterface */
@@ -148,8 +153,19 @@ class Memory extends AbstractAdapter implements
      */
     public function flush()
     {
+        if ($this->data === []) {
+            return true;
+        }
+
+        unset($this->data);
+
+        if (gc_enabled()) {
+            gc_collect_cycles();
+        }
+
         $this->data = [];
-        return true;
+
+        return gc_mem_caches() >= 0;
     }
 
     /* ClearExpiredInterface */
@@ -751,7 +767,6 @@ class Memory extends AbstractAdapter implements
             return true;
         }
 
-        $free = $total - (float) memory_get_usage(true);
-        return $free > 0;
+        return ($total - memory_get_usage(false)) > 0;
     }
 }
