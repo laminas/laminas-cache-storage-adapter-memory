@@ -149,6 +149,10 @@ class Memory extends AbstractAdapter implements
      */
     public function flush()
     {
+        if ($this->data === []) {
+            return true;
+        }
+
         $this->data = [];
 
         return gc_mem_caches() >= 0;
