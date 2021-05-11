@@ -151,7 +151,7 @@ class Memory extends AbstractAdapter implements
     {
         $this->data = [];
 
-        return gc_mem_caches() > 0;
+        return gc_mem_caches() >= 0;
     }
 
     /* ClearExpiredInterface */
