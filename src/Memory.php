@@ -113,9 +113,10 @@ class Memory extends AbstractAdapter implements
     public function getAvailableSpace()
     {
         $memoryLimit = $this->getOptions()->getMemoryLimit();
-        $usedMemory = (float) memory_get_usage(false);
+        $usedMemory  = memory_get_usage(false);
+        $freeMemory  = $memoryLimit - $usedMemory;
 
-        return max([0, $memoryLimit - $usedMemory]);
+        return $freeMemory > 0 ? $freeMemory : 0;
     }
 
     /* IterableInterface */

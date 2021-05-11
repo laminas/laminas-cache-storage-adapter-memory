@@ -125,11 +125,13 @@ class MemoryTest extends AbstractCommonAdapterTest
         );
     }
 
+    /** @return int */
     private function getUsedMemory()
     {
         return memory_get_usage(false);
     }
 
+    /** @return int */
     private function getAllocatedMemory()
     {
         return memory_get_usage(true);
