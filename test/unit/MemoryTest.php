@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaminasTest\Cache\Storage\Adapter;
 
 use Laminas\Cache;
@@ -7,11 +9,7 @@ use Laminas\Cache\Exception\OutOfSpaceException;
 
 use function memory_get_usage;
 
-/**
- * @group      Laminas_Cache
- * @covers Laminas\Cache\Storage\Adapter\Memory<extended>
- */
-class MemoryTest extends AbstractCommonAdapterTest
+final class MemoryTest extends AbstractCommonAdapterTest
 {
     public function setUp(): void
     {
@@ -21,14 +19,6 @@ class MemoryTest extends AbstractCommonAdapterTest
         $this->storage->setOptions($this->options);
 
         parent::setUp();
-    }
-
-    public function getCommonAdapterNamesProvider(): array
-    {
-        return [
-            ['memory'],
-            ['Memory'],
-        ];
     }
 
     public function testThrowOutOfSpaceException()

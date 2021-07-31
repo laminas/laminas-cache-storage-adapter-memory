@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaminasTest\Cache\Psr\CacheItemPool;
 
 use Laminas\Cache\Psr\CacheItemPool\CacheException;
 use Laminas\Cache\Psr\CacheItemPool\CacheItemPoolDecorator;
-use Laminas\Cache\StorageFactory;
+use Laminas\Cache\Storage\Adapter\Memory;
 use PHPUnit\Framework\TestCase;
 
 class MemoryIntegrationTest extends TestCase
@@ -14,7 +16,7 @@ class MemoryIntegrationTest extends TestCase
      */
     public function testAdapterNotSupported()
     {
-        $storage = StorageFactory::adapterFactory('memory');
+        $storage = new Memory();
 
         $this->expectException(CacheException::class);
         new CacheItemPoolDecorator($storage);
