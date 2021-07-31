@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="4.9.1@7e137f5b95f7394607f5d0631172ff4c2da46781">
+  <file src="src/Memory.php">
+    <LessSpecificReturnStatement occurrences="1">
+      <code>parent::setOptions($options)</code>
+    </LessSpecificReturnStatement>
+    <MixedArgument occurrences="3">
+      <code>$item['tags']</code>
+      <code>$key</code>
+      <code>$key</code>
+    </MixedArgument>
+    <MixedArrayAccess occurrences="17">
+      <code>$data[$key]</code>
+      <code>$data[$key]</code>
+      <code>$data[$key]</code>
+      <code>$data[$key]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[0]</code>
+      <code>$data[0]</code>
+      <code>$data[0]</code>
+      <code>$data[0]</code>
+      <code>$data[1]</code>
+      <code>$item['tags']</code>
+      <code>$this-&gt;data[$ns][$key]['tags']</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey][1]</code>
+    </MixedArrayAccess>
+    <MixedArrayAssignment occurrences="14">
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[0]</code>
+      <code>$data[0]</code>
+      <code>$data[1]</code>
+      <code>$data[1]</code>
+      <code>$this-&gt;data[$ns][$key]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey]</code>
+    </MixedArrayAssignment>
+    <MixedArrayOffset occurrences="10">
+      <code>$data[$key]</code>
+      <code>$data[$key]</code>
+      <code>$data[$key]</code>
+      <code>$data[$key]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$data[$normalizedKey]</code>
+      <code>$result[$normalizedKey]</code>
+    </MixedArrayOffset>
+    <MixedAssignment occurrences="31">
+      <code>$casToken</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data[0]</code>
+      <code>$data[0]</code>
+      <code>$item</code>
+      <code>$item</code>
+      <code>$item</code>
+      <code>$key</code>
+      <code>$key</code>
+      <code>$key</code>
+      <code>$key</code>
+      <code>$newValue</code>
+      <code>$newValue</code>
+      <code>$normalizedKey</code>
+      <code>$normalizedKey</code>
+      <code>$result[$normalizedKey]</code>
+      <code>$result[]</code>
+      <code>$tmp</code>
+      <code>$value</code>
+      <code>$value</code>
+      <code>$value</code>
+    </MixedAssignment>
+    <MixedInferredReturnType occurrences="4">
+      <code>MemoryOptions</code>
+      <code>int|bool</code>
+      <code>int|bool</code>
+      <code>string[]|FALSE</code>
+    </MixedInferredReturnType>
+    <MixedOperand occurrences="7">
+      <code>$data[$key][1]</code>
+      <code>$data[$normalizedKey][1]</code>
+      <code>$data[$normalizedKey][1]</code>
+      <code>$data[0]</code>
+      <code>$data[0]</code>
+      <code>$data[1]</code>
+      <code>$this-&gt;data[$ns][$normalizedKey][1]</code>
+    </MixedOperand>
+    <MixedReturnStatement occurrences="4">
+      <code>$newValue</code>
+      <code>$newValue</code>
+      <code>$this-&gt;data[$ns][$key]['tags'] ?? []</code>
+      <code>$this-&gt;options</code>
+    </MixedReturnStatement>
+    <MoreSpecificImplementedParamType occurrences="1">
+      <code>$options</code>
+    </MoreSpecificImplementedParamType>
+    <MoreSpecificReturnType occurrences="1">
+      <code>Memory</code>
+    </MoreSpecificReturnType>
+    <PossiblyUndefinedVariable occurrences="2">
+      <code>$data</code>
+      <code>$data</code>
+    </PossiblyUndefinedVariable>
+    <PropertyNotSetInConstructor occurrences="1">
+      <code>Memory</code>
+    </PropertyNotSetInConstructor>
+    <RedundantCastGivenDocblockType occurrences="2">
+      <code>(string) $namespace</code>
+      <code>(string) $prefix</code>
+    </RedundantCastGivenDocblockType>
+    <UnusedVariable occurrences="8">
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+      <code>$data</code>
+    </UnusedVariable>
+  </file>
+  <file src="test/integration/Psr/CacheItemPool/MemoryIntegrationTest.php">
+    <MissingReturnType occurrences="1">
+      <code>testAdapterNotSupported</code>
+    </MissingReturnType>
+  </file>
+  <file src="test/integration/Psr/SimpleCache/MemoryIntegrationTest.php">
+    <MixedArrayAssignment occurrences="4">
+      <code>$this-&gt;skippedTests['testBasicUsageWithLongKey']</code>
+      <code>$this-&gt;skippedTests['testObjectDoesNotChangeInCache']</code>
+      <code>$this-&gt;skippedTests['testSetMultipleTtl']</code>
+      <code>$this-&gt;skippedTests['testSetTtl']</code>
+    </MixedArrayAssignment>
+  </file>
+  <file src="test/unit/MemoryTest.php">
+    <MissingReturnType occurrences="1">
+      <code>testThrowOutOfSpaceException</code>
+    </MissingReturnType>
+    <UndefinedMethod occurrences="1">
+      <code>setMemoryLimit</code>
+    </UndefinedMethod>
+  </file>
+</files>

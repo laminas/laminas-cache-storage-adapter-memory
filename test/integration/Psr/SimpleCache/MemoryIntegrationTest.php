@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaminasTest\Cache\Psr\SimpleCache;
 
 use Cache\IntegrationTests\SimpleCacheTest;
 use Laminas\Cache\Psr\SimpleCache\SimpleCacheDecorator;
-use Laminas\Cache\StorageFactory;
+use Laminas\Cache\Storage\Adapter\Memory;
 
 class MemoryIntegrationTest extends SimpleCacheTest
 {
@@ -23,7 +25,7 @@ class MemoryIntegrationTest extends SimpleCacheTest
 
     public function createSimpleCache(): SimpleCacheDecorator
     {
-        $storage = StorageFactory::adapterFactory('memory');
+        $storage = new Memory();
         return new SimpleCacheDecorator($storage);
     }
 }
