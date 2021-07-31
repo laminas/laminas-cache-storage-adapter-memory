@@ -718,7 +718,7 @@ class Memory extends AbstractAdapter implements
                     'minTtl'             => 1,
                     'maxTtl'             => PHP_INT_MAX,
                     'staticTtl'          => false,
-                    'ttlPrecision'       => 0.05,
+                    'ttlPrecision'       => 1,
                     'maxKeyLength'       => 0,
                     'namespaceIsPrefix'  => false,
                     'namespaceSeparator' => '',
