@@ -26,7 +26,7 @@ use function strpos;
 
 use const PHP_INT_MAX;
 
-class Memory extends AbstractAdapter implements
+final class Memory extends AbstractAdapter implements
     AvailableSpaceCapableInterface,
     ClearByPrefixInterface,
     ClearByNamespaceInterface,
@@ -119,7 +119,7 @@ class Memory extends AbstractAdapter implements
      *
      * @return KeyListIterator
      */
-    public function getIterator()
+    public function getIterator(): Traversable
     {
         $ns   = $this->getOptions()->getNamespace();
         $keys = [];

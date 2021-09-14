@@ -7,7 +7,7 @@
   ],
   "license": "BSD-3-Clause",
   "require": {
-    "php": "^7.3 || ~8.0.0",
+    "php": "^7.3 || ~8.0.0 || ~8.1.0",
     "laminas/laminas-cache": "^3.0"
   },
   "provide": {
@@ -19,7 +19,6 @@
     "laminas/laminas-cache-storage-adapter-test": "2.0.x-dev",
     "laminas/laminas-coding-standard": "~2.3.0",
     "psalm/plugin-phpunit": "^0.16.1",
-    "squizlabs/php_codesniffer": "^3.5.8",
     "vimeo/psalm": "^4.9"
   },
   "config": {
