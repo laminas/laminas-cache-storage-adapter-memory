@@ -22,7 +22,10 @@
     "vimeo/psalm": "^4.9"
   },
   "config": {
-    "sort-packages": true
+    "sort-packages": true,
+    "platform": {
+      "php": "7.3.99"
+    }
   },
   "extra": {
     "laminas": {
