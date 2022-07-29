@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace LaminasTest\Cache\Psr\SimpleCache;
 
-use Cache\IntegrationTests\SimpleCacheTest;
-use Laminas\Cache\Psr\SimpleCache\SimpleCacheDecorator;
 use Laminas\Cache\Storage\Adapter\Memory;
+use Laminas\Cache\Storage\StorageInterface;
+use LaminasTest\Cache\Storage\Adapter\AbstractSimpleCacheIntegrationTest;
 
-class MemoryIntegrationTest extends SimpleCacheTest
+class MemoryIntegrationTest extends AbstractSimpleCacheIntegrationTest
 {
     public function setUp(): void
     {
@@ -23,9 +23,8 @@ class MemoryIntegrationTest extends SimpleCacheTest
         parent::setUp();
     }
 
-    public function createSimpleCache(): SimpleCacheDecorator
+    protected function createStorage(): StorageInterface
     {
-        $storage = new Memory();
-        return new SimpleCacheDecorator($storage);
+        return new Memory();
     }
 }
