@@ -14,9 +14,9 @@
     "laminas/laminas-cache-storage-implementation": "1.0"
   },
   "require-dev": {
-    "laminas/laminas-cache": "3.0.x-dev",
+    "laminas/laminas-cache": "3.2.x",
     "laminas/laminas-cache-storage-adapter-benchmark": "^1.0",
-    "laminas/laminas-cache-storage-adapter-test": "2.0.x-dev",
+    "laminas/laminas-cache-storage-adapter-test": "2.3.x",
     "laminas/laminas-coding-standard": "~2.3.0",
     "psalm/plugin-phpunit": "^0.17.0",
     "vimeo/psalm": "^4.9"
