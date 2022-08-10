@@ -20,6 +20,9 @@
     "psalm/plugin-phpunit": "^0.17.0",
     "vimeo/psalm": "^4.9"
   },
+  "conflict": {
+    "laminas/laminas-servicemanager": "<3.11"
+  },
   "config": {
     "sort-packages": true,
     "platform": {
