@@ -49,10 +49,8 @@ final class Memory extends AbstractAdapter implements
      *         )
      *     )
      * )
-     *
-     * @var array
      */
-    protected $data = [];
+    private array $data = [];
 
     /**
      * Set options.
