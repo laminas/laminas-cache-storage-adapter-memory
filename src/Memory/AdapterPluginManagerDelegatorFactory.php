@@ -17,7 +17,7 @@ final class AdapterPluginManagerDelegatorFactory
     {
         $pluginManager = $callback();
         assert($pluginManager instanceof AdapterPluginManager);
-
+        /** @psalm-suppress InvalidArgument */
         $pluginManager->configure([
             'factories' => [
                 Memory::class => InvokableFactory::class,

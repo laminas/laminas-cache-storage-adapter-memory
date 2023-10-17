@@ -116,6 +116,7 @@ final class Memory extends AbstractAdapter implements
      * Get the storage iterator
      *
      * @return KeyListIterator
+     * @psalm-suppress ImplementedReturnTypeMismatch
      */
     public function getIterator(): Traversable
     {
