@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Laminas\Cache\Storage\Adapter;
 
 use Laminas\Cache\Exception;
-
 use function ini_get;
 use function is_numeric;
 use function preg_match;
@@ -75,7 +74,7 @@ class MemoryOptions extends AdapterOptions
     /**
      * Normalized a given value of memory limit into the number of bytes
      *
-     * @param string|int $value
+     * @param string|int|null $value
      * @return int|null
      * @throws Exception\InvalidArgumentException
      */

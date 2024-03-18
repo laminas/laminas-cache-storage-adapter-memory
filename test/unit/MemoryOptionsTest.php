@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace LaminasTest\Cache\Storage\Adapter;
@@ -6,7 +7,9 @@ namespace LaminasTest\Cache\Storage\Adapter;
 use Laminas\Cache;
 use Laminas\Cache\Exception\InvalidArgumentException;
 
-class MemoryOptionsTest extends AbstractCommonAdapterTest
+use function ini_set;
+
+final class MemoryOptionsTest extends AbstractCommonAdapterTest
 {
     public function setUp(): void
     {
@@ -22,7 +25,6 @@ class MemoryOptionsTest extends AbstractCommonAdapterTest
      * @param string $iniValue
      * @param int $expectedMemoryLimit
      * @return void
-     *
      * @runInSeparateProcess
      * @dataProvider iniValuesDataSet
      */
@@ -30,36 +32,53 @@ class MemoryOptionsTest extends AbstractCommonAdapterTest
     {
         ini_set('memory_limit', $iniValue);
 
-        $this->assertEquals($expectedMemoryLimit, $this->options->getMemoryLimit());
+        /**
+         * @var Cache\Storage\Adapter\MemoryOptions $options
+         */
+        $options = $this->options;
+
+        $this->assertEquals($expectedMemoryLimit, $options->getMemoryLimit());
     }
 
     /**
-     * @param string|null $memoryLimit
+     * @param string $memoryLimit
      * @param string $expectedExceptionMessage
      * @dataProvider invalidMemoryLimitDataSet
+     * @return void
      */
     public function testInvalidMemoryLimitThrowsException($memoryLimit, $expectedExceptionMessage)
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage($expectedExceptionMessage);
 
-        $this->options->setMemoryLimit($memoryLimit);
+        /**
+         * @var Cache\Storage\Adapter\MemoryOptions $options
+         */
+        $options = $this->options;
+
+        $options->setMemoryLimit($memoryLimit);
     }
 
     /**
-     * @param string|int $value
+     * @param string|int $memoryLimit
      * @param int $expectedMemoryLimit
      * @dataProvider validMemoryLimitDataSet
+     * @return void
      */
     public function testValidMemoryLimit($memoryLimit, $expectedMemoryLimit)
     {
-        $this->options->setMemoryLimit($memoryLimit);
+        /**
+         * @var Cache\Storage\Adapter\MemoryOptions $options
+         */
+        $options = $this->options;
 
-        $this->assertEquals($expectedMemoryLimit, $this->options->getMemoryLimit());
+        $options->setMemoryLimit($memoryLimit);
+
+        $this->assertEquals($expectedMemoryLimit, $options->getMemoryLimit());
     }
 
     /**
-     * @return array
+     * @return array<array{string, string}>
      */
     public static function invalidMemoryLimitDataSet()
     {
@@ -69,7 +88,7 @@ class MemoryOptionsTest extends AbstractCommonAdapterTest
     }
 
     /**
-     * @return array
+     * @return array<array{string|int, int}>
      */
     public static function validMemoryLimitDataSet()
     {
@@ -86,7 +105,7 @@ class MemoryOptionsTest extends AbstractCommonAdapterTest
     }
 
     /**
-     * @return array
+     * @return array<array{string, int}>
      */
     public static function iniValuesDataSet()
     {
