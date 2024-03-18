@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Laminas\Cache\Storage\Adapter;
 
 use Laminas\Cache\Exception;
+
 use function ini_get;
 use function is_numeric;
 use function preg_match;
@@ -61,7 +62,7 @@ class MemoryOptions extends AdapterOptions
             // By default use half of PHP's memory limit if possible
             $memoryLimit = $this->normalizeMemoryLimit(ini_get('memory_limit'));
             if ($memoryLimit >= 0) {
-                $this->memoryLimit = (int)($memoryLimit / 2);
+                $this->memoryLimit = (int) ($memoryLimit / 2);
             } else {
                 // disable memory limit
                 $this->memoryLimit = 0;
@@ -85,14 +86,14 @@ class MemoryOptions extends AdapterOptions
         }
 
         if (is_numeric($value)) {
-            return (int)$value;
+            return (int) $value;
         }
 
-        if (!preg_match('/(\-?\d+)\s*(\w*)/', $value, $matches)) {
+        if (! preg_match('/(\-?\d+)\s*(\w*)/', $value, $matches)) {
             throw new Exception\InvalidArgumentException("Invalid memory limit '{$value}'");
         }
 
-        $value = (int)$matches[1];
+        $value = (int) $matches[1];
         if ($value <= 0) {
             return 0;
         }
