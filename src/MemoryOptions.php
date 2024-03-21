@@ -6,6 +6,8 @@ namespace Laminas\Cache\Storage\Adapter;
 
 use Laminas\Cache\Exception;
 
+use Traversable;
+
 use function ini_get;
 use function is_numeric;
 use function preg_match;
@@ -22,6 +24,18 @@ class MemoryOptions extends AdapterOptions
      * @var null|int
      */
     protected $memoryLimit;
+
+    /**
+     * @param array|null|Traversable $options
+     */
+    public function __construct($options = null)
+    {
+        $memoryLimitIniValue = ini_get('memory_limit');
+
+        $this->memoryLimit = (int)($this->normalizeMemoryLimit($memoryLimitIniValue) / 2);
+
+        parent::__construct($options);
+    }
 
     /**
      * Set memory limit
@@ -75,21 +89,17 @@ class MemoryOptions extends AdapterOptions
     /**
      * Normalized a given value of memory limit into the number of bytes
      *
-     * @param string|int|null $value
-     * @return int|null
+     * @param string|int $value
+     * @return int
      * @throws Exception\InvalidArgumentException
      */
     protected function normalizeMemoryLimit($value)
     {
-        if ($value === null) {
-            return null;
-        }
-
         if (is_numeric($value)) {
             return (int) $value;
         }
 
-        if (! preg_match('/(\-?\d+)\s*(\w*)/', $value, $matches)) {
+        if (! preg_match('/^(\-?\d+)\s*(\w*)$/', $value, $matches)) {
             throw new Exception\InvalidArgumentException("Invalid memory limit '{$value}'");
         }
 
