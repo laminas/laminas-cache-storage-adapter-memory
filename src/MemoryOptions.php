@@ -98,7 +98,7 @@ class MemoryOptions extends AdapterOptions
             return (int) $value;
         }
 
-        if (! preg_match('/^(\-?\d+)\s*(\w*)$/', $value, $matches)) {
+        if (! preg_match('/^(\-?\d+)\s*(\w*)/', $value, $matches)) {
             throw new Exception\InvalidArgumentException("Invalid memory limit '{$value}'");
         }
 
