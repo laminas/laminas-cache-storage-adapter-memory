@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Laminas\Cache\Storage\Adapter;
 
 use Laminas\Cache\Exception;
-
 use Traversable;
 
 use function ini_get;
@@ -32,7 +31,7 @@ class MemoryOptions extends AdapterOptions
     {
         $memoryLimitIniValue = ini_get('memory_limit');
 
-        $this->memoryLimit = (int)($this->normalizeMemoryLimit($memoryLimitIniValue) / 2);
+        $this->memoryLimit = (int) ($this->normalizeMemoryLimit($memoryLimitIniValue) / 2);
 
         parent::__construct($options);
     }
