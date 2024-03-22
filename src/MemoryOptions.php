@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Laminas\Cache\Storage\Adapter;
 
 use Laminas\Cache\Exception;
+use Traversable;
 
 use function ini_get;
 use function is_numeric;
@@ -24,6 +25,18 @@ class MemoryOptions extends AdapterOptions
     protected $memoryLimit;
 
     /**
+     * @param array|null|Traversable $options
+     */
+    public function __construct($options = null)
+    {
+        $memoryLimitIniValue = ini_get('memory_limit');
+
+        $this->memoryLimit = (int) ($this->normalizeMemoryLimit($memoryLimitIniValue) / 2);
+
+        parent::__construct($options);
+    }
+
+    /**
      * Set memory limit
      *
      * - A number less or equal 0 will disable the memory limit
@@ -33,7 +46,7 @@ class MemoryOptions extends AdapterOptions
      *
      * @link http://php.net/manual/faq.using.php#faq.using.shorthandbytes
      *
-     * @param  string|int $memoryLimit
+     * @param string|int $memoryLimit
      * @return MemoryOptions Provides a fluent interface
      */
     public function setMemoryLimit($memoryLimit)
@@ -76,8 +89,8 @@ class MemoryOptions extends AdapterOptions
      * Normalized a given value of memory limit into the number of bytes
      *
      * @param string|int $value
-     * @throws Exception\InvalidArgumentException
      * @return int
+     * @throws Exception\InvalidArgumentException
      */
     protected function normalizeMemoryLimit($value)
     {
@@ -85,8 +98,8 @@ class MemoryOptions extends AdapterOptions
             return (int) $value;
         }
 
-        if (! preg_match('/(\-?\d+)\s*(\w*)/', ini_get('memory_limit'), $matches)) {
-            throw new Exception\InvalidArgumentException("Invalid  memory limit '{$value}'");
+        if (! preg_match('/^(\-?\d+)\s*(\w*)/', $value, $matches)) {
+            throw new Exception\InvalidArgumentException("Invalid memory limit '{$value}'");
         }
 
         $value = (int) $matches[1];
@@ -97,15 +110,15 @@ class MemoryOptions extends AdapterOptions
         switch (strtoupper($matches[2])) {
             case 'G':
                 $value *= 1024;
-                // no break
+            // no break
 
             case 'M':
                 $value *= 1024;
-                // no break
+            // no break
 
             case 'K':
                 $value *= 1024;
-                // no break
+            // no break
         }
 
         return $value;
