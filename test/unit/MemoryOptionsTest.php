@@ -83,7 +83,7 @@ final class MemoryOptionsTest extends AbstractAdapterOptionsTest
             ['1G', 1073741824],
             ['1k', 1024],
             ['-1', -1],
-            [-1, -1]
+            [-1, -1],
         ];
     }
 
