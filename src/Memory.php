@@ -47,7 +47,7 @@ final class Memory extends AbstractMetadataCapableAdapter implements
 {
     /** @var array<string,array<non-empty-string|int,CacheItem>> */
     private array $data = [];
-    private ClockInterface $clock;
+    private readonly ClockInterface $clock;
 
     /**
      * @param iterable<string,mixed>|MemoryOptions|null $options
