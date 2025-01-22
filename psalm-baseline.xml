@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="4.10.0@916b098b008f6de4543892b1e0651c1c3b92cbfa">
+<files psalm-version="4.30.0@d0bc6e25d89f649e4f36a534f330f8bb4643dd69">
   <file src="src/Memory.php">
+    <ImplementedReturnTypeMismatch occurrences="1">
+      <code>KeyListIterator</code>
+    </ImplementedReturnTypeMismatch>
     <LessSpecificReturnStatement occurrences="1">
       <code>parent::setOptions($options)</code>
     </LessSpecificReturnStatement>
@@ -138,18 +141,13 @@
       <code>$data</code>
     </UnusedVariable>
   </file>
+  <file src="src/Memory/AdapterPluginManagerDelegatorFactory.php">
+    <InvalidArgument occurrences="1"/>
+  </file>
   <file src="test/integration/Psr/CacheItemPool/MemoryIntegrationTest.php">
     <MissingReturnType occurrences="1">
       <code>testAdapterNotSupported</code>
     </MissingReturnType>
-  </file>
-  <file src="test/integration/Psr/SimpleCache/MemoryIntegrationTest.php">
-    <MixedArrayAssignment occurrences="4">
-      <code>$this-&gt;skippedTests['testBasicUsageWithLongKey']</code>
-      <code>$this-&gt;skippedTests['testObjectDoesNotChangeInCache']</code>
-      <code>$this-&gt;skippedTests['testSetMultipleTtl']</code>
-      <code>$this-&gt;skippedTests['testSetTtl']</code>
-    </MixedArrayAssignment>
   </file>
   <file src="test/unit/MemoryTest.php">
     <MissingReturnType occurrences="1">
