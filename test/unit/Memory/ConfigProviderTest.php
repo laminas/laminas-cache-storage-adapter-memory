@@ -23,9 +23,7 @@ final class ConfigProviderTest extends TestCase
     {
         $dependencies               = $this->provider->getServiceDependencies();
         $delegatorFromConfiguration = $dependencies['delegators'] ?? [];
-        self::assertIsArray($delegatorFromConfiguration);
         $delegatorsForPluginManager = $delegatorFromConfiguration[AdapterPluginManager::class] ?? [];
-        self::assertIsArray($delegatorsForPluginManager);
         self::assertContains(AdapterPluginManagerDelegatorFactory::class, $delegatorsForPluginManager);
     }
 }

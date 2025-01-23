@@ -7,9 +7,12 @@ namespace LaminasTest\Cache\Psr\SimpleCache;
 use Laminas\Cache\Storage\Adapter\Memory;
 use Laminas\Cache\Storage\StorageInterface;
 use LaminasTest\Cache\Storage\Adapter\AbstractSimpleCacheIntegrationTest;
+use LaminasTest\Cache\Storage\Adapter\ModifiableClockTrait;
 
 class MemoryIntegrationTest extends AbstractSimpleCacheIntegrationTest
 {
+    use ModifiableClockTrait;
+
     public function setUp(): void
     {
         $this->skippedTests['testSetTtl']         = 'Memory adapter does not honor TTL';
@@ -25,6 +28,6 @@ class MemoryIntegrationTest extends AbstractSimpleCacheIntegrationTest
 
     protected function createStorage(): StorageInterface
     {
-        return new Memory();
+        return new Memory(clock: $this->getClock());
     }
 }

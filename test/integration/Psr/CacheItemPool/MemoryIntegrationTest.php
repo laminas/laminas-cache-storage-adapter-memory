@@ -4,21 +4,31 @@ declare(strict_types=1);
 
 namespace LaminasTest\Cache\Psr\CacheItemPool;
 
-use Laminas\Cache\Psr\CacheItemPool\CacheException;
-use Laminas\Cache\Psr\CacheItemPool\CacheItemPoolDecorator;
 use Laminas\Cache\Storage\Adapter\Memory;
-use PHPUnit\Framework\TestCase;
+use Laminas\Cache\Storage\Adapter\MemoryOptions;
+use Laminas\Cache\Storage\FlushableInterface;
+use Laminas\Cache\Storage\StorageInterface;
+use LaminasTest\Cache\Storage\Adapter\AbstractCacheItemPoolIntegrationTest;
+use LaminasTest\Cache\Storage\Adapter\ModifiableClockTrait;
 
-class MemoryIntegrationTest extends TestCase
+/**
+ * @uses FlushableInterface
+ *
+ * @template-extends AbstractCacheItemPoolIntegrationTest<MemoryOptions>
+ */
+final class MemoryIntegrationTest extends AbstractCacheItemPoolIntegrationTest
 {
-    /**
-     * The memory adapter calculates the TTL on reading which violates PSR-6
-     */
-    public function testAdapterNotSupported()
-    {
-        $storage = new Memory();
+    use ModifiableClockTrait;
 
-        $this->expectException(CacheException::class);
-        new CacheItemPoolDecorator($storage);
+    private const TRANSIENT_STORAGE = 'Memory cache is not persistent and thus re-instantiating leads to data loss.';
+    /** @var array<non-empty-string,non-empty-string> */
+    protected array $skippedTests = [
+        'testSaveWithoutExpire'         => self::TRANSIENT_STORAGE,
+        'testDeferredSaveWithoutCommit' => self::TRANSIENT_STORAGE,
+    ];
+
+    protected function createStorage(): StorageInterface&FlushableInterface
+    {
+        return new Memory(clock: $this->getClock());
     }
 }

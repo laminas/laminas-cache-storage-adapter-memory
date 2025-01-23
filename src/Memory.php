@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Laminas\Cache\Storage\Adapter;
 
+use DateInterval;
+use DateTimeZone;
 use Laminas\Cache\Exception;
-use Laminas\Cache\Storage\AvailableSpaceCapableInterface;
+use Laminas\Cache\Storage\AbstractMetadataCapableAdapter;
+use Laminas\Cache\Storage\Adapter\Memory\CacheItem;
+use Laminas\Cache\Storage\Adapter\Memory\Clock;
+use Laminas\Cache\Storage\Adapter\Memory\Metadata;
 use Laminas\Cache\Storage\Capabilities;
 use Laminas\Cache\Storage\ClearByNamespaceInterface;
 use Laminas\Cache\Storage\ClearByPrefixInterface;
@@ -13,117 +18,83 @@ use Laminas\Cache\Storage\ClearExpiredInterface;
 use Laminas\Cache\Storage\FlushableInterface;
 use Laminas\Cache\Storage\IterableInterface;
 use Laminas\Cache\Storage\TaggableInterface;
-use Laminas\Cache\Storage\TotalSpaceCapableInterface;
-use stdClass;
-use Traversable;
+use Psr\Clock\ClockInterface;
 
 use function array_diff;
 use function array_keys;
+use function array_reverse;
+use function assert;
 use function count;
-use function memory_get_usage;
-use function microtime;
-use function strpos;
+use function date_default_timezone_get;
+use function round;
+use function sprintf;
+use function str_starts_with;
 
 use const PHP_INT_MAX;
+use const PHP_ROUND_HALF_UP;
 
-final class Memory extends AbstractAdapter implements
-    AvailableSpaceCapableInterface,
+/**
+ * @template-extends AbstractMetadataCapableAdapter<MemoryOptions, Metadata>
+ * @template-implements IterableInterface<non-empty-string,mixed>
+ */
+final class Memory extends AbstractMetadataCapableAdapter implements
     ClearByPrefixInterface,
     ClearByNamespaceInterface,
     ClearExpiredInterface,
     FlushableInterface,
     IterableInterface,
-    TaggableInterface,
-    TotalSpaceCapableInterface
+    TaggableInterface
 {
-    /**
-     * Data Array
-     *
-     * Format:
-     * array(
-     *     <NAMESPACE> => array(
-     *         <KEY> => array(
-     *             0 => <VALUE>
-     *             1 => <MICROTIME>
-     *             ['tags' => <TAGS>]
-     *         )
-     *     )
-     * )
-     */
+    /** @var array<string,array<non-empty-string|int,CacheItem>> */
     private array $data = [];
+    private readonly ClockInterface $clock;
 
     /**
-     * Set options.
-     *
-     * @see    getOptions()
-     *
-     * @param array|Traversable|MemoryOptions $options
-     * @return Memory
+     * @param iterable<string,mixed>|MemoryOptions|null $options
      */
-    public function setOptions($options)
+    public function __construct(iterable|MemoryOptions|null $options = null, ClockInterface|null $clock = null)
+    {
+        parent::__construct($options);
+        $this->clock = $clock ?? new Clock(new DateTimeZone(date_default_timezone_get()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setOptions(iterable|AdapterOptions|MemoryOptions $options): self
     {
         if (! $options instanceof MemoryOptions) {
             $options = new MemoryOptions($options);
         }
 
-        return parent::setOptions($options);
+        parent::setOptions($options);
+        return $this;
     }
 
     /**
-     * Get options.
-     *
-     * @see setOptions()
-     *
-     * @return MemoryOptions
+     * {@inheritDoc}
      */
-    public function getOptions()
+    public function getOptions(): MemoryOptions
     {
-        if (! $this->options) {
+        if ($this->options === null) {
             $this->setOptions(new MemoryOptions());
         }
+
+        assert($this->options instanceof MemoryOptions);
         return $this->options;
     }
 
-    /* TotalSpaceCapableInterface */
-
     /**
-     * Get total space in bytes
-     *
-     * @return int
+     * {@inheritDoc}
      */
-    public function getTotalSpace()
-    {
-        return $this->getOptions()->getMemoryLimit();
-    }
-
-    /* AvailableSpaceCapableInterface */
-
-    /**
-     * Get available space in bytes
-     *
-     * @return int|float
-     */
-    public function getAvailableSpace()
-    {
-        $total = $this->getOptions()->getMemoryLimit();
-        $avail = $total - (float) memory_get_usage(true);
-        return $avail > 0 ? $avail : 0;
-    }
-
-    /* IterableInterface */
-
-    /**
-     * Get the storage iterator
-     *
-     * @return KeyListIterator
-     */
-    public function getIterator(): Traversable
+    public function getIterator(): KeyListIterator
     {
         $ns   = $this->getOptions()->getNamespace();
         $keys = [];
 
         if (isset($this->data[$ns])) {
-            foreach ($this->data[$ns] as $key => &$tmp) {
+            foreach (array_keys($this->data[$ns]) as $key) {
+                $key = (string) $key;
                 if ($this->internalHasItem($key)) {
                     $keys[] = $key;
                 }
@@ -133,57 +104,69 @@ final class Memory extends AbstractAdapter implements
         return new KeyListIterator($this, $keys);
     }
 
-    /* FlushableInterface */
+    protected function internalSetItems(array $normalizedKeyValuePairs): array
+    {
+        $maxItems                  = $this->getOptions()->getMaxItems();
+        $keysWhichWereNotPersisted = [];
+
+        if ($maxItems !== MemoryOptions::UNLIMITED_ITEMS && count($normalizedKeyValuePairs) > $maxItems) {
+            [$normalizedKeyValuePairs, $keysWhichWereNotPersisted] = $this->sliceOldestItems(
+                $normalizedKeyValuePairs,
+                $maxItems,
+            );
+        }
+
+        foreach ($normalizedKeyValuePairs as $key => $value) {
+            $succeeded = $this->internalSetItem((string) $key, $value);
+            if ($succeeded === false) {
+                $keysWhichWereNotPersisted[] = $key;
+            }
+        }
+
+        return $keysWhichWereNotPersisted;
+    }
 
     /**
-     * Flush the whole storage
-     *
-     * @return bool
+     * {@inheritDoc}
      */
-    public function flush()
+    public function flush(): bool
     {
         $this->data = [];
         return true;
     }
 
-    /* ClearExpiredInterface */
-
     /**
-     * Remove expired items
-     *
-     * @return bool
+     * {@inheritDoc}
      */
-    public function clearExpired()
+    public function clearExpired(): bool
     {
-        $ttl = $this->getOptions()->getTtl();
-        if ($ttl <= 0) {
-            return true;
-        }
-
         $ns = $this->getOptions()->getNamespace();
         if (! isset($this->data[$ns])) {
             return true;
         }
 
-        $data = &$this->data[$ns];
-        foreach ($data as $key => &$item) {
-            if (microtime(true) >= $data[$key][1] + $ttl) {
-                unset($data[$key]);
+        $items = $this->data[$ns];
+        foreach (array_keys($items) as $key) {
+            if ($this->clock->now()->getTimestamp() >= $items[$key]->expires) {
+                unset($items[$key]);
             }
         }
+
+        $this->data[$ns] = $items;
 
         return true;
     }
 
     /**
-     * Remove items of given namespace
-     *
-     * @param string $namespace
-     * @return bool
+     * {@inheritDoc}
      */
-    public function clearByNamespace($namespace)
+    public function clearByNamespace(string $namespace): bool
     {
-        $namespace = (string) $namespace;
+        /**
+         * @psalm-suppress TypeDoesNotContainType Even tho, we expect the prefix is being passed as a non-empty-string,
+         *                                        having this check around ensures that only those with a given prefix
+         *                                        are being dropped. Empty prefix would actually clear all.
+         */
         if ($namespace === '') {
             throw new Exception\InvalidArgumentException('No namespace given');
         }
@@ -193,14 +176,15 @@ final class Memory extends AbstractAdapter implements
     }
 
     /**
-     * Remove items matching given prefix
-     *
-     * @param string $prefix
-     * @return bool
+     * {@inheritDoc}
      */
-    public function clearByPrefix($prefix)
+    public function clearByPrefix(string $prefix): bool
     {
-        $prefix = (string) $prefix;
+        /**
+         * @psalm-suppress TypeDoesNotContainType Even tho, we expect the prefix is being passed as a non-empty-string,
+         *                                        having this check around ensures that only those with a given prefix
+         *                                        are being dropped. Empty prefix would actually clear all.
+         */
         if ($prefix === '') {
             throw new Exception\InvalidArgumentException('No prefix given');
         }
@@ -210,64 +194,51 @@ final class Memory extends AbstractAdapter implements
             return true;
         }
 
-        $data = &$this->data[$ns];
-        foreach ($data as $key => &$item) {
-            if (strpos($key, $prefix) === 0) {
+        $data = $this->data[$ns];
+        foreach (array_keys($data) as $key) {
+            if (str_starts_with((string) $key, $prefix)) {
                 unset($data[$key]);
             }
         }
 
-        return true;
-    }
+        $this->data[$ns] = $data;
 
-    /* TaggableInterface */
-
-    /**
-     * Set tags to an item by given key.
-     * An empty array will remove all tags.
-     *
-     * @param string   $key
-     * @param string[] $tags
-     * @return bool
-     */
-    public function setTags($key, array $tags)
-    {
-        $ns = $this->getOptions()->getNamespace();
-        if (! isset($this->data[$ns][$key])) {
-            return false;
-        }
-
-        $this->data[$ns][$key]['tags'] = $tags;
         return true;
     }
 
     /**
-     * Get tags of an item by given key
-     *
-     * @param string $key
-     * @return string[]|FALSE
+     * {@inheritDoc}
      */
-    public function getTags($key)
+    public function setTags(string $key, array $tags): bool
     {
         $ns = $this->getOptions()->getNamespace();
-        if (! isset($this->data[$ns][$key])) {
+
+        $cacheItem = $this->data[$ns][$key] ?? null;
+        if ($cacheItem === null) {
             return false;
         }
 
-        return $this->data[$ns][$key]['tags'] ?? [];
+        $this->data[$ns][$key]->tags = $tags;
+        return true;
     }
 
     /**
-     * Remove items matching given tags.
-     *
-     * If $disjunction only one of the given tags must match
-     * else all given tags must match.
-     *
-     * @param string[] $tags
-     * @param  bool  $disjunction
-     * @return bool
+     * {@inheritDoc}
      */
-    public function clearByTags(array $tags, $disjunction = false)
+    public function getTags(string $key): array|false
+    {
+        $cacheItem = $this->getCacheItem($key);
+        if ($cacheItem === null) {
+            return false;
+        }
+
+        return $cacheItem->tags;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function clearByTags(array $tags, bool $disjunction = false): bool
     {
         $ns = $this->getOptions()->getNamespace();
         if (! isset($this->data[$ns])) {
@@ -275,360 +246,160 @@ final class Memory extends AbstractAdapter implements
         }
 
         $tagCount = count($tags);
-        $data     = &$this->data[$ns];
-        foreach ($data as $key => &$item) {
-            if (isset($item['tags'])) {
-                $diff = array_diff($tags, $item['tags']);
+        $data     = $this->data[$ns];
+        foreach ($data as $key => $item) {
+            if ($item->tags !== []) {
+                $diff = array_diff($tags, $item->tags);
                 if (($disjunction && count($diff) < $tagCount) || (! $disjunction && ! $diff)) {
                     unset($data[$key]);
                 }
             }
         }
 
-        return true;
-    }
-
-    /* reading */
-
-    /**
-     * Internal method to get an item.
-     *
-     * @param  string  $normalizedKey
-     * @param  bool $success
-     * @param  mixed   $casToken
-     * @return mixed Data on success, null on failure
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalGetItem(&$normalizedKey, &$success = null, &$casToken = null)
-    {
-        $options = $this->getOptions();
-        $ns      = $options->getNamespace();
-        $success = isset($this->data[$ns][$normalizedKey]);
-        if ($success) {
-            $data = &$this->data[$ns][$normalizedKey];
-            $ttl  = $options->getTtl();
-            if ($ttl && microtime(true) >= $data[1] + $ttl) {
-                $success = false;
-            }
-        }
-
-        if (! $success) {
-            return;
-        }
-
-        $casToken = $data[0];
-        return $data[0];
-    }
-
-    /**
-     * Internal method to get multiple items.
-     *
-     * @param  array $normalizedKeys
-     * @return array Associative array of keys and values
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalGetItems(array &$normalizedKeys)
-    {
-        $options = $this->getOptions();
-        $ns      = $options->getNamespace();
-        if (! isset($this->data[$ns])) {
-            return [];
-        }
-
-        $data = &$this->data[$ns];
-        $ttl  = $options->getTtl();
-        $now  = microtime(true);
-
-        $result = [];
-        foreach ($normalizedKeys as $normalizedKey) {
-            if (isset($data[$normalizedKey])) {
-                if (! $ttl || $now < $data[$normalizedKey][1] + $ttl) {
-                    $result[$normalizedKey] = $data[$normalizedKey][0];
-                }
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Internal method to test if an item exists.
-     *
-     * @param  string $normalizedKey
-     * @return bool
-     */
-    protected function internalHasItem(&$normalizedKey)
-    {
-        $options = $this->getOptions();
-        $ns      = $options->getNamespace();
-        if (! isset($this->data[$ns][$normalizedKey])) {
-            return false;
-        }
-
-        // check if expired
-        $ttl = $options->getTtl();
-        if ($ttl && microtime(true) >= $this->data[$ns][$normalizedKey][1] + $ttl) {
-            return false;
-        }
+        $this->data[$ns] = $data;
 
         return true;
     }
 
     /**
-     * Internal method to test multiple items.
-     *
-     * @param array $normalizedKeys
-     * @return array Array of found keys
+     * {@inheritDoc}
      */
-    protected function internalHasItems(array &$normalizedKeys)
-    {
-        $options = $this->getOptions();
-        $ns      = $options->getNamespace();
-        if (! isset($this->data[$ns])) {
-            return [];
+    protected function internalGetItem(
+        string $normalizedKey,
+        bool|null &$success = null,
+        mixed &$casToken = null
+    ): mixed {
+        $item    = $this->getCacheItem($normalizedKey);
+        $success = $item !== null;
+        if ($item === null) {
+            return null;
         }
 
-        $data = &$this->data[$ns];
-        $ttl  = $options->getTtl();
-        $now  = microtime(true);
-
-        $result = [];
-        foreach ($normalizedKeys as $normalizedKey) {
-            if (isset($data[$normalizedKey])) {
-                if (! $ttl || $now < $data[$normalizedKey][1] + $ttl) {
-                    $result[] = $normalizedKey;
-                }
-            }
-        }
-
-        return $result;
+        $casToken = $item->value;
+        return $casToken;
     }
 
     /**
-     * Get metadata of an item.
-     *
-     * @param  string $normalizedKey
-     * @return array|bool Metadata on success, false on failure
-     * @throws Exception\ExceptionInterface
-     * @triggers getMetadata.pre(PreEvent)
-     * @triggers getMetadata.post(PostEvent)
-     * @triggers getMetadata.exception(ExceptionEvent)
+     * {@inheritDoc}
      */
-    protected function internalGetMetadata(&$normalizedKey)
+    protected function internalHasItem(string $normalizedKey): bool
     {
-        if (! $this->internalHasItem($normalizedKey)) {
+        return $this->getCacheItem($normalizedKey) !== null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function internalGetMetadata(string $normalizedKey): Metadata|null
+    {
+        $cacheItem = $this->getCacheItem($normalizedKey);
+        if ($cacheItem === null) {
+            return null;
+        }
+
+        return new Metadata(
+            mtime: $cacheItem->lastModified,
+            ctime: $cacheItem->created,
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function internalSetItem(string $normalizedKey, mixed $value): bool
+    {
+        $options = $this->getOptions();
+        $now     = $this->clock->now()->getTimestamp();
+        assert($now >= 0);
+
+        $expires = $this->calculateExpireTimestampBasedOnTtl($options->getTtl());
+        return $this->persistCacheItem($normalizedKey, new CacheItem(
+            $normalizedKey,
+            $value,
+            $now,
+            $now,
+            $expires
+        ));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function internalAddItem(string $normalizedKey, mixed $value): bool
+    {
+        $cacheItem = $this->getCacheItem($normalizedKey);
+        if ($cacheItem !== null) {
+            return false;
+        }
+
+        $this->internalSetItem($normalizedKey, $value);
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function internalReplaceItem(string $normalizedKey, mixed $value): bool
+    {
+        $cacheItem = $this->getCacheItem($normalizedKey);
+        if ($cacheItem === null) {
+            return false;
+        }
+
+        /**
+         * NOTE: We are explicitly implementing this as we do not want to have available space check during replacement
+         */
+        $now = $this->clock->now()->getTimestamp();
+        assert($now >= 0);
+        $expires = $this->calculateExpireTimestampBasedOnTtl($this->getOptions()->getTtl());
+
+        return $this->persistCacheItem($normalizedKey, new CacheItem(
+            $cacheItem->key,
+            $value,
+            $cacheItem->created,
+            $now,
+            $expires
+        ));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function internalTouchItem(string $normalizedKey): bool
+    {
+        $cacheItem = $this->getCacheItem($normalizedKey);
+        if ($cacheItem === null) {
+            return false;
+        }
+
+        $now = $this->clock->now()->getTimestamp();
+        assert($now >= 0);
+        $expires = $this->calculateExpireTimestampBasedOnTtl($this->getOptions()->getTtl());
+
+        return $this->persistCacheItem(
+            $normalizedKey,
+            new CacheItem(
+                $cacheItem->key,
+                $cacheItem->value,
+                $cacheItem->created,
+                $now,
+                $expires,
+                $cacheItem->tags
+            ),
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function internalRemoveItem(string $normalizedKey): bool
+    {
+        $cacheItem = $this->getCacheItem($normalizedKey);
+        if ($cacheItem === null) {
             return false;
         }
 
         $ns = $this->getOptions()->getNamespace();
-        return [
-            'mtime' => $this->data[$ns][$normalizedKey][1],
-        ];
-    }
-
-    /* writing */
-
-    /**
-     * Internal method to store an item.
-     *
-     * @param  string $normalizedKey
-     * @param  mixed  $value
-     * @return bool
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalSetItem(&$normalizedKey, &$value)
-    {
-        $options = $this->getOptions();
-
-        if (! $this->hasAvailableSpace()) {
-            $memoryLimit = $options->getMemoryLimit();
-            throw new Exception\OutOfSpaceException(
-                "Memory usage exceeds limit ({$memoryLimit})."
-            );
-        }
-
-        $ns                              = $options->getNamespace();
-        $this->data[$ns][$normalizedKey] = [$value, microtime(true)];
-
-        return true;
-    }
-
-    /**
-     * Internal method to store multiple items.
-     *
-     * @param  array $normalizedKeyValuePairs
-     * @return array Array of not stored keys
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalSetItems(array &$normalizedKeyValuePairs)
-    {
-        $options = $this->getOptions();
-
-        if (! $this->hasAvailableSpace()) {
-            $memoryLimit = $options->getMemoryLimit();
-            throw new Exception\OutOfSpaceException(
-                "Memory usage exceeds limit ({$memoryLimit})."
-            );
-        }
-
-        $ns = $options->getNamespace();
-        if (! isset($this->data[$ns])) {
-            $this->data[$ns] = [];
-        }
-
-        $data = &$this->data[$ns];
-        $now  = microtime(true);
-        foreach ($normalizedKeyValuePairs as $normalizedKey => $value) {
-            $data[$normalizedKey] = [$value, $now];
-        }
-
-        return [];
-    }
-
-    /**
-     * Add an item.
-     *
-     * @param  string $normalizedKey
-     * @param  mixed  $value
-     * @return bool
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalAddItem(&$normalizedKey, &$value)
-    {
-        $options = $this->getOptions();
-
-        if (! $this->hasAvailableSpace()) {
-            $memoryLimit = $options->getMemoryLimit();
-            throw new Exception\OutOfSpaceException(
-                "Memory usage exceeds limit ({$memoryLimit})."
-            );
-        }
-
-        $ns = $options->getNamespace();
-        if (isset($this->data[$ns][$normalizedKey])) {
-            return false;
-        }
-
-        $this->data[$ns][$normalizedKey] = [$value, microtime(true)];
-        return true;
-    }
-
-    /**
-     * Internal method to add multiple items.
-     *
-     * @param  array $normalizedKeyValuePairs
-     * @return array Array of not stored keys
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalAddItems(array &$normalizedKeyValuePairs)
-    {
-        $options = $this->getOptions();
-
-        if (! $this->hasAvailableSpace()) {
-            $memoryLimit = $options->getMemoryLimit();
-            throw new Exception\OutOfSpaceException(
-                "Memory usage exceeds limit ({$memoryLimit})."
-            );
-        }
-
-        $ns = $options->getNamespace();
-        if (! isset($this->data[$ns])) {
-            $this->data[$ns] = [];
-        }
-
-        $result = [];
-        $data   = &$this->data[$ns];
-        $now    = microtime(true);
-        foreach ($normalizedKeyValuePairs as $normalizedKey => $value) {
-            if (isset($data[$normalizedKey])) {
-                $result[] = $normalizedKey;
-            } else {
-                $data[$normalizedKey] = [$value, $now];
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Internal method to replace an existing item.
-     *
-     * @param  string $normalizedKey
-     * @param  mixed  $value
-     * @return bool
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalReplaceItem(&$normalizedKey, &$value)
-    {
-        $ns = $this->getOptions()->getNamespace();
-        if (! isset($this->data[$ns][$normalizedKey])) {
-            return false;
-        }
-        $this->data[$ns][$normalizedKey] = [$value, microtime(true)];
-
-        return true;
-    }
-
-    /**
-     * Internal method to replace multiple existing items.
-     *
-     * @param  array $normalizedKeyValuePairs
-     * @return array Array of not stored keys
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalReplaceItems(array &$normalizedKeyValuePairs)
-    {
-        $ns = $this->getOptions()->getNamespace();
-        if (! isset($this->data[$ns])) {
-            return array_keys($normalizedKeyValuePairs);
-        }
-
-        $result = [];
-        $data   = &$this->data[$ns];
-        foreach ($normalizedKeyValuePairs as $normalizedKey => $value) {
-            if (! isset($data[$normalizedKey])) {
-                $result[] = $normalizedKey;
-            } else {
-                $data[$normalizedKey] = [$value, microtime(true)];
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Internal method to reset lifetime of an item
-     *
-     * @param  string $normalizedKey
-     * @return bool
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalTouchItem(&$normalizedKey)
-    {
-        $ns = $this->getOptions()->getNamespace();
-
-        if (! isset($this->data[$ns][$normalizedKey])) {
-            return false;
-        }
-
-        $this->data[$ns][$normalizedKey][1] = microtime(true);
-        return true;
-    }
-
-    /**
-     * Internal method to remove an item.
-     *
-     * @param  string $normalizedKey
-     * @return bool
-     * @throws Exception\ExceptionInterface
-     */
-    protected function internalRemoveItem(&$normalizedKey)
-    {
-        $ns = $this->getOptions()->getNamespace();
-        if (! isset($this->data[$ns][$normalizedKey])) {
-            return false;
-        }
-
         unset($this->data[$ns][$normalizedKey]);
 
         // remove empty namespace
@@ -640,112 +411,150 @@ final class Memory extends AbstractAdapter implements
     }
 
     /**
-     * Internal method to increment an item.
-     *
-     * @param  string $normalizedKey
-     * @param  int    $value
-     * @return int|bool The new value on success, false on failure
-     * @throws Exception\ExceptionInterface
+     * {@inheritDoc}
      */
-    protected function internalIncrementItem(&$normalizedKey, &$value)
+    protected function internalGetCapabilities(): Capabilities
     {
-        $ns = $this->getOptions()->getNamespace();
-        if (isset($this->data[$ns][$normalizedKey])) {
-            $data     = &$this->data[$ns][$normalizedKey];
-            $data[0] += $value;
-            $data[1]  = microtime(true);
-            $newValue = $data[0];
-        } else {
-            // initial value
-            $newValue                        = $value;
-            $this->data[$ns][$normalizedKey] = [$newValue, microtime(true)];
+        return $this->capabilities ??= new Capabilities(
+            maxKeyLength: Capabilities::UNLIMITED_KEY_LENGTH,
+            ttlSupported: true,
+            namespaceIsPrefix: false,
+            supportedDataTypes: [
+                'NULL'     => true,
+                'boolean'  => true,
+                'integer'  => true,
+                'double'   => true,
+                'string'   => true,
+                'array'    => true,
+                'object'   => true,
+                'resource' => true,
+            ],
+            ttlPrecision: 1,
+        );
+    }
+
+    private function getCacheItem(string $key): CacheItem|null
+    {
+        $namespace = $this->getOptions()->getNamespace();
+        $cacheItem = $this->data[$namespace][$key] ?? null;
+        if ($cacheItem === null) {
+            return null;
         }
 
-        return $newValue;
+        if ($this->isCacheItemExpired($cacheItem)) {
+            unset($this->data[$namespace][$key]);
+            return null;
+        }
+
+        return $cacheItem;
     }
 
     /**
-     * Internal method to decrement an item.
-     *
-     * @param  string $normalizedKey
-     * @param  int    $value
-     * @return int|bool The new value on success, false on failure
-     * @throws Exception\ExceptionInterface
+     * @param non-empty-string $key
      */
-    protected function internalDecrementItem(&$normalizedKey, &$value)
+    private function persistCacheItem(string $key, CacheItem $item): bool
     {
-        $ns = $this->getOptions()->getNamespace();
-        if (isset($this->data[$ns][$normalizedKey])) {
-            $data     = &$this->data[$ns][$normalizedKey];
-            $data[0] -= $value;
-            $data[1]  = microtime(true);
-            $newValue = $data[0];
-        } else {
-            // initial value
-            $newValue                        = -$value;
-            $this->data[$ns][$normalizedKey] = [$newValue, microtime(true)];
-        }
+        $options   = $this->getOptions();
+        $namespace = $options->getNamespace();
+        unset($this->data[$namespace][$key]);
 
-        return $newValue;
+        $maxItems = $options->getMaxItems();
+        $this->free($namespace, $maxItems);
+
+        $this->data[$namespace][$key] = $item;
+
+        return true;
     }
 
-    /* status */
-
     /**
-     * Internal method to get capabilities of this adapter
-     *
-     * @return Capabilities
+     * @return non-negative-int
      */
-    protected function internalGetCapabilities()
+    private function calculateExpireTimestampBasedOnTtl(float|int $ttl): int
     {
-        if ($this->capabilities === null) {
-            $this->capabilityMarker = new stdClass();
-            $this->capabilities     = new Capabilities(
-                $this,
-                $this->capabilityMarker,
-                [
-                    'supportedDatatypes' => [
-                        'NULL'     => true,
-                        'boolean'  => true,
-                        'integer'  => true,
-                        'double'   => true,
-                        'string'   => true,
-                        'array'    => true,
-                        'object'   => true,
-                        'resource' => true,
-                    ],
-                    'supportedMetadata'  => ['mtime'],
-                    'minTtl'             => 1,
-                    'maxTtl'             => PHP_INT_MAX,
-                    'staticTtl'          => false,
-                    'ttlPrecision'       => 1,
-                    'maxKeyLength'       => 0,
-                    'namespaceIsPrefix'  => false,
-                    'namespaceSeparator' => '',
-                ]
-            );
+        if ($ttl < 1) {
+            return PHP_INT_MAX;
         }
 
-        return $this->capabilities;
+        $ttl      = (int) round($ttl, PHP_ROUND_HALF_UP);
+        $interval = DateInterval::createFromDateString(sprintf('%d seconds', $ttl));
+        if ($interval === false) {
+            throw new Exception\InvalidArgumentException('Configured TTL cannot be converted to seconds.');
+        }
+
+        $timestamp = $this->clock
+            ->now()
+            ->add($interval)
+            ->getTimestamp();
+
+        assert($timestamp >= 0);
+        return $timestamp;
     }
 
-    /* internal */
-
-    /**
-     * Has space available to store items?
-     *
-     * @return bool
-     */
-    protected function hasAvailableSpace()
+    private function isCacheItemExpired(CacheItem $cacheItem): bool
     {
-        $total = $this->getOptions()->getMemoryLimit();
+        return $this->clock->now()->getTimestamp() >= $cacheItem->expires;
+    }
 
-        // check memory limit disabled
-        if ($total <= 0) {
-            return true;
+    private function free(string $namespace, int $maxItems): void
+    {
+        if ($maxItems === MemoryOptions::UNLIMITED_ITEMS) {
+            return;
         }
 
-        $free = $total - (float) memory_get_usage(true);
-        return $free > 0;
+        if (count($this->data[$namespace] ?? []) < $maxItems) {
+            return;
+        }
+
+        $oldest = null;
+        foreach ($this->data[$namespace] ?? [] as $key => $existingItem) {
+            if ($this->isCacheItemExpired($existingItem)) {
+                unset($this->data[$namespace][$key]);
+                break;
+            }
+
+            if ($oldest === null) {
+                $oldest = $existingItem;
+            }
+
+            if ($existingItem->expires < $oldest->expires) {
+                $oldest = $existingItem;
+            }
+        }
+
+        if ($oldest === null) {
+            return;
+        }
+
+        unset($this->data[$namespace][$oldest->key]);
+    }
+
+    /**
+     * @param non-empty-array<non-empty-string|int,mixed> $normalizedKeyValuePairs
+     * @param positive-int $maxItems
+     * @return array{non-empty-array<non-empty-string|int,mixed>, list<non-empty-string|int>}
+     */
+    private function sliceOldestItems(array $normalizedKeyValuePairs, int $maxItems): array
+    {
+        $keysWhichAreNotPersisted = [];
+        $maxItemsExceeded         = false;
+        $items                    = 0;
+
+        foreach (array_keys(array_reverse($normalizedKeyValuePairs, true)) as $key) {
+            if ($maxItemsExceeded === true) {
+                $keysWhichAreNotPersisted[] = $key;
+                unset($normalizedKeyValuePairs[$key]);
+                continue;
+            }
+
+            $items++;
+            if ($items < $maxItems) {
+                continue;
+            }
+
+            $maxItemsExceeded = true;
+        }
+
+        assert($normalizedKeyValuePairs !== []);
+        return [$normalizedKeyValuePairs, $keysWhichAreNotPersisted];
     }
 }
