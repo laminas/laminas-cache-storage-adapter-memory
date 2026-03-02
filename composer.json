@@ -21,7 +21,7 @@
     "lcobucci/clock": "^3.0",
     "lctrs/psalm-psr-container-plugin": "^1.10",
     "psalm/plugin-phpunit": "^0.19.0",
-    "vimeo/psalm": "^5.26.1"
+    "vimeo/psalm": "^6.0.0"
   },
   "config": {
     "sort-packages": true,
