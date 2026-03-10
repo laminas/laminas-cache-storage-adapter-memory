@@ -9,7 +9,7 @@ use Laminas\Cache\Storage\StorageInterface;
 use LaminasTest\Cache\Storage\Adapter\AbstractSimpleCacheIntegrationTest;
 use LaminasTest\Cache\Storage\Adapter\ModifiableClockTrait;
 
-class MemoryIntegrationTest extends AbstractSimpleCacheIntegrationTest
+final class MemoryIntegrationTest extends AbstractSimpleCacheIntegrationTest
 {
     use ModifiableClockTrait;
 
