@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c3ea16253aca688b32f28e27e041d013",
+    "content-hash": "5fa2f174032d946f3b5713e29b76741a",
     "packages": [
         {
             "name": "brick/varexporter",
@@ -2434,16 +2434,16 @@
         },
         {
             "name": "laminas/laminas-coding-standard",
-            "version": "3.0.1",
+            "version": "3.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laminas/laminas-coding-standard.git",
-                "reference": "ac809f5b27f0b22d0c1ec0cbc78cb67f92bfebcb"
+                "reference": "d4412caba9ed16c93cdcf301759f5ee71f9d9aea"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laminas/laminas-coding-standard/zipball/ac809f5b27f0b22d0c1ec0cbc78cb67f92bfebcb",
-                "reference": "ac809f5b27f0b22d0c1ec0cbc78cb67f92bfebcb",
+                "url": "https://api.github.com/repos/laminas/laminas-coding-standard/zipball/d4412caba9ed16c93cdcf301759f5ee71f9d9aea",
+                "reference": "d4412caba9ed16c93cdcf301759f5ee71f9d9aea",
                 "shasum": ""
             },
             "require": {
@@ -2483,7 +2483,7 @@
                     "type": "community_bridge"
                 }
             ],
-            "time": "2024-10-16T09:23:09+00:00"
+            "time": "2025-05-13T08:37:04+00:00"
         },
         {
             "name": "laminas/laminas-json",
@@ -6805,5 +6805,5 @@
     "platform-overrides": {
         "php": "8.2.99"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
