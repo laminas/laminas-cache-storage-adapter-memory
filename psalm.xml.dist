@@ -23,6 +23,12 @@
     <issueHandlers>
         <!-- Mixed assignments are valid for cache values and thus there might be mixed assignments as well -->
         <MixedAssignment errorLevel="suppress"/>
+        <MissingOverrideAttribute>
+            <errorLevel type="suppress">
+                <directory name="src" />
+                <directory name="test" />
+            </errorLevel>
+        </MissingOverrideAttribute>
     </issueHandlers>
     <plugins>
         <pluginClass class="Psalm\PhpUnitPlugin\Plugin"/>
